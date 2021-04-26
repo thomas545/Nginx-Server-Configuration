@@ -1,0 +1,50 @@
+name: Push to Live GCP
+
+on:
+  push:
+    branches:
+      - master
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - uses: actions/checkout@v1
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.8
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install google-cloud-pubsub
+      - name: Lint with flake8
+        run: |
+          pip install flake8
+          # stop the build if there are Python syntax errors or undefined names
+          flake8 ./apps --count --select=E9,F63,F7,F82 --show-source --statistics
+          # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+          flake8 ./apps --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      - name: Docker Build
+        uses: benjlevesque/actions-docker-gcr/build@v1.1
+        with:
+          image: cosmic-tenure-290110/core
+
+      - name: Docker Push
+        uses: benjlevesque/actions-docker-gcr/push@v1.1
+        with:
+          image: cosmic-tenure-290110/core
+          gcloud_key: ${{ secrets.GCLOUD_SERVICE_KEY }}
+
+      - uses: GoogleCloudPlatform/github-actions/setup-gcloud@master
+        with:
+          version: '310.0.0'
+          service_account_key: ${{ secrets.GCLOUD_DEPLOY_RUN }}
+
+      # Deploy the Docker image to the GKE cluster
+      - name: Deploy
+        run: |
+          gcloud run deploy <cloud run name> --quiet --image gcr.io/cosmic-tenure-290110/core:latest --project cosmic-tenure-290110 --region us-central1 --platform managed
+
