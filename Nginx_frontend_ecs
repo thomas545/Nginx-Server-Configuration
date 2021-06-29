@@ -1,0 +1,13 @@
+# nginx/default.conf
+
+server {
+    listen 80;
+    server_name localhost;
+    index index.html index.htm;
+    root "/usr/share/nginx/html";
+    # root "/app/dist/webSite-doctor";
+    location ~* \.(?:css|js|map|jpe?g|gif|png|ttf|woff)$ { }
+    location / {
+        try_files $uri$args $uri$args/ /index.html;
+    }
+}
