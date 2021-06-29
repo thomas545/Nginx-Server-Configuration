@@ -1,0 +1,32 @@
+FROM node:12.19-buster as builder
+
+ARG ENV_NAME=dev
+
+COPY package.json package-lock.json ./
+
+## Storing node modules on a separate layer will prevent unnecessary npm installs at each build
+
+RUN npm install
+RUN npm ci && mkdir /app && mv ./node_modules ./app
+
+WORKDIR /app
+
+COPY . .
+
+RUN npm run ng build --output-path=dist
+# -- --configuration=$ENV_NAME 
+
+
+### STAGE 2: Setup ###
+
+FROM nginx
+
+COPY nginx/default.conf /etc/nginx/conf.d/
+
+RUN rm -rf /usr/share/nginx/html/*
+
+COPY --from=builder /app/dist/webSite /usr/share/nginx/html
+
+ENV PORT=80
+
+CMD ["nginx", "-g", "daemon off;"]
